@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogTrigger } from "@radix-ui/react-dialog";
 import { Cross1Icon } from "@radix-ui/react-icons";
 import Modal from "@/components/shared/modal";
@@ -11,6 +11,35 @@ import {
 import ConnectorCard from "@/components/shared/connector-card";
 import ConfigElementRenderer from "@/components/shared/config-element-renderer";
 import _ from "lodash";
+//Import the OpenAPI Large Language Model (you can import other models here eg. Cohere)
+import { OpenAI } from "langchain/llms/openai";
+import { LLMChain } from "langchain/chains";
+import { PromptTemplate } from "langchain/prompts";
+import { DynamicTool } from "langchain/tools";
+import { Serper } from "langchain/tools";
+//Import the agent executor module
+import { initializeAgentExecutorWithOptions } from "langchain/agents";
+import { BaseCallbackHandler } from "langchain/callbacks";
+import { AgentAction } from "langchain/dist/schema";
+
+const openAiKey = "sk-...";
+const serperApiKey = "434..";
+
+interface Action {
+  tool: string;
+  toolInput: string;
+  log: string;
+}
+
+interface IntermediateStep {
+  action: Action;
+  observation: string;
+}
+
+interface Output {
+  output: string;
+  intermediateSteps: IntermediateStep[];
+}
 
 /* OF COURSE THESE WOULD BE LOADED FROM A DB, ALSO WE COULD ALLOW A DYNAMIC EDITOR TOTHE USER TO DEFINE ADDITIONAL AGENTS (CONNECTORS IN OUR LANGUAGE) */
 const connectors: Connector[] = [
@@ -27,8 +56,22 @@ const connectors: Connector[] = [
     description_for_ai: "",
     is_configurable: false,
     config_elements: [],
-    config_json: {}, 
-    prompt_template: "Given this startup description:\n\n\n{{STARTUP_DESCRIPTION}}\n\n\nWhat are the most important market trends for this startup to consider?\n\n\nI want you to perform a market research, which means: Gathering and analyzing market data to support startup decision-making."
+    config_json: {},
+    prompt_template: `You have the task to do market research for a startup.
+       Market research is gathering and analyzing market data, to support startup decision-making.
+       This is the startup description, which is all you need to know about the startup (you will need only this startup description, don't google more info about the startup):
+       -----------------
+       STARTUP_DESCRIPTION
+       -----------------
+      
+       Given this startup description and 
+       1. your general knowledge about the market this startup might operate in
+       2. the relevant information you find on google
+       your task is to answer:
+       - What are the most important market trends for this startup to consider?
+       - What is a compact summary of the market in which the startup operates?
+       - What are opportunities, risks, competitors, peculiarities of the market?
+       - Whar is your recommendation on how to proceed accordingly in order to run the company successfully.`,
   },
   {
     type: "Opportunity Score",
@@ -43,7 +86,8 @@ const connectors: Connector[] = [
     description_for_ai: "",
     is_configurable: false,
     config_elements: [],
-    config_json: {}, prompt_template: ""
+    config_json: {},
+    prompt_template: "",
   },
 
   {
@@ -59,7 +103,8 @@ const connectors: Connector[] = [
     description_for_ai: "",
     is_configurable: false,
     config_elements: [],
-    config_json: {}, prompt_template: ""
+    config_json: {},
+    prompt_template: "",
   },
 
   {
@@ -75,7 +120,8 @@ const connectors: Connector[] = [
     description_for_ai: "",
     is_configurable: false,
     config_elements: [],
-    config_json: {}, prompt_template: ""
+    config_json: {},
+    prompt_template: "",
   },
 
   {
@@ -91,7 +137,8 @@ const connectors: Connector[] = [
     description_for_ai: "",
     is_configurable: false,
     config_elements: [],
-    config_json: {}, prompt_template: ""
+    config_json: {},
+    prompt_template: "",
   },
 
   {
@@ -107,7 +154,8 @@ const connectors: Connector[] = [
     description_for_ai: "",
     is_configurable: false,
     config_elements: [],
-    config_json: {}, prompt_template: ""
+    config_json: {},
+    prompt_template: "",
   },
 
   {
@@ -123,7 +171,8 @@ const connectors: Connector[] = [
     description_for_ai: "",
     is_configurable: false,
     config_elements: [],
-    config_json: {}, prompt_template: ""
+    config_json: {},
+    prompt_template: "",
   },
 
   {
@@ -139,7 +188,8 @@ const connectors: Connector[] = [
     description_for_ai: "",
     is_configurable: false,
     config_elements: [],
-    config_json: {}, prompt_template: ""
+    config_json: {},
+    prompt_template: "",
   },
   {
     type: "Longtail keywords",
@@ -154,8 +204,9 @@ const connectors: Connector[] = [
     description_for_ai: "",
     is_configurable: false,
     config_elements: [],
-    config_json: {}, prompt_template: ""
-  },  
+    config_json: {},
+    prompt_template: "",
+  },
   {
     type: "Market sizing",
     description:
@@ -169,7 +220,8 @@ const connectors: Connector[] = [
     description_for_ai: "",
     is_configurable: false,
     config_elements: [],
-    config_json: {}, prompt_template: ""
+    config_json: {},
+    prompt_template: "",
   },
   {
     type: "Competitor research",
@@ -184,7 +236,8 @@ const connectors: Connector[] = [
     description_for_ai: "",
     is_configurable: false,
     config_elements: [],
-    config_json: {}, prompt_template: ""
+    config_json: {},
+    prompt_template: "",
   },
   {
     type: "Topic research",
@@ -199,7 +252,8 @@ const connectors: Connector[] = [
     description_for_ai: "",
     is_configurable: false,
     config_elements: [],
-    config_json: {}, prompt_template: ""
+    config_json: {},
+    prompt_template: "",
   },
   {
     type: "Product research",
@@ -214,7 +268,8 @@ const connectors: Connector[] = [
     description_for_ai: "",
     is_configurable: false,
     config_elements: [],
-    config_json: {}, prompt_template: ""
+    config_json: {},
+    prompt_template: "",
   },
   {
     type: "Influencer research",
@@ -229,7 +284,8 @@ const connectors: Connector[] = [
     description_for_ai: "",
     is_configurable: false,
     config_elements: [],
-    config_json: {}, prompt_template: ""
+    config_json: {},
+    prompt_template: "",
   },
   {
     type: "Event research",
@@ -244,7 +300,8 @@ const connectors: Connector[] = [
     description_for_ai: "",
     is_configurable: false,
     config_elements: [],
-    config_json: {}, prompt_template: ""
+    config_json: {},
+    prompt_template: "",
   },
   {
     type: "Technology research",
@@ -259,7 +316,8 @@ const connectors: Connector[] = [
     description_for_ai: "",
     is_configurable: false,
     config_elements: [],
-    config_json: {}, prompt_template: ""
+    config_json: {},
+    prompt_template: "",
   },
 ];
 
@@ -302,6 +360,51 @@ const ConnectorsTab: React.FC = () => {
     currentConnector?.config_json || {},
   );
 
+  const [agentLog, setAgentLog] = useState<string[]>([
+    "Agent team not started yet",
+  ]); // Create a state variable to manage log entries
+  const logContainerRef = useRef<HTMLDivElement>(null); // Create a ref for the log container
+
+  class AgentLogger extends BaseCallbackHandler {
+    constructor() {
+      super();
+    }
+
+    name = "custom_handler";
+
+    handleLLMNewToken(token: string) {}
+    handleLLMStart(llm: { name: string }, _prompts: string[]) {
+      setAgentLog((prevLog) => [...prevLog, `LLM ${llm.name} started`]);
+    }
+
+    handleChainStart(chain: { name: string }) {
+      setAgentLog((prevLog) => [...prevLog, `LLM Chain ${chain.name} started`]);
+    }
+
+    handleAgentAction(action: AgentAction) {
+      setAgentLog((prevLog) => [
+        ...prevLog,
+        `Agent action started`,
+        `Agent uses tool: ${action.tool}`,
+        `Input for tool: ${action.toolInput}`,
+        `Additional info: ${action.log}`,
+      ]);
+    }
+
+    handleToolStart(tool: { name: string }) {
+      setAgentLog((prevLog) => [...prevLog, `Tool ${tool.name} started`]);
+    }
+  }
+
+  useEffect(() => {
+    if (logContainerRef.current) {
+      logContainerRef.current.scrollTo({
+        top: logContainerRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+    }
+  }, [agentLog]);
+
   const handleSaveConfiguration = (updatedConfig: Record<string, any>) => {
     if (currentConnector) {
       const updatedConnectors = selectedConnectors.map((connector) => {
@@ -326,8 +429,73 @@ const ConnectorsTab: React.FC = () => {
   };
 
   const handleRunAgents = (connector: Connector) => {
+    setAgentLog(["Starting Agent Team..."]); // Reset the log when starting a new run
+
     setCurrentConnector(connector);
     //------------------------------------------------ START OF AGENT CODE HERE ----------------------------------------------------------------------
+
+    const llm = new OpenAI({ temperature: 0.9, openAIApiKey: openAiKey });
+
+    const prompt = new PromptTemplate({
+      template: "{query}",
+      inputVariables: ["query"],
+    });
+    /*
+    const prompt = new PromptTemplate({
+      template: connector.prompt_template ?? "",
+      inputVariables: ["STARTUP_DESCRIPTION"],
+    });*/
+    const llmChain = new LLMChain({ llm: llm, prompt: prompt, verbose: true });
+
+    const llmTool = new DynamicTool({
+      name: "Language Model",
+      func: (input: string) => llmChain.run(input),
+      description: "use this tool for general purpose queries and logic",
+    });
+
+    const search = new Serper(serperApiKey);
+
+    const tools = [llmTool, search];
+
+    const run = async () => {
+      const executor = await initializeAgentExecutorWithOptions(tools, llm, {
+        agentType: "zero-shot-react-description",
+        returnIntermediateSteps: true,
+      });
+      console.log("Loaded agent.");
+
+
+      const agentPrompt = new PromptTemplate({
+        template: connector.prompt_template ?? "",
+        inputVariables: ["STARTUP_DESCRIPTION"],
+      });
+
+      const input = (connector.prompt_template??"").replaceAll("STARTUP_DESCRIPTION", startupDescription)
+
+      console.log(input)
+
+      const result: any = await executor.call({ input }, [new AgentLogger()]);
+
+      const output: Output = result;
+
+      // Log the main output
+
+      // Log the intermediate steps
+      output.intermediateSteps.forEach((step: IntermediateStep) => {
+        const action = step.action;
+
+        // Log the action log message
+        setAgentLog((prevLog) => [...prevLog, action.log]);
+
+        // Log the observation
+        setAgentLog((prevLog) => [...prevLog, step.observation]);
+      });
+
+      setAgentLog((prevLog) => [...prevLog, output.output]);
+    };
+
+    run();
+
     //------------------------------------------------  END OF AGENT CODE HERE  ----------------------------------------------------------------------
     setShowConfigureModal(true); // Open the configure modal
   };
@@ -335,7 +503,6 @@ const ConnectorsTab: React.FC = () => {
   const handleShowAgentsResult = (connector: Connector) => {
     setShowConfigureModal(true); // Open the configure modal
   };
-
 
   const handleExecutableDownload = () => {
     // Download logic here
@@ -397,31 +564,23 @@ const ConnectorsTab: React.FC = () => {
           showModal={showConfigureModal}
           setShowModal={setShowConfigureModal}
         >
-          <div className="w-full overflow-hidden shadow-xl md:rounded-2xl md:border md:border-gray-200">
-            <div className="flex flex-col items-center justify-center space-y-3 border-b border-gray-200 bg-white px-4 py-6 pt-8 text-center md:px-16">
-              <h3 className="font-display text-2xl font-bold">
+          <div className="w-full max-w-2xl overflow-hidden shadow-xl md:rounded-2xl md:border md:border-gray-200">
+            <div className="log-modal flex max-h-48 flex-col items-center justify-center space-y-3 border-b border-gray-200 bg-white px-4 py-6 pt-8 text-center md:px-16">
+              <h3 className="mb-6 font-display text-2xl font-bold">
                 Task {currentConnector?.name} AutoGPT result
               </h3>
-              <img
-                src="/longtail.gif"
-                width="735px"
-                height="309px"
-                alt="longtail"
-              />
-              {currentConnector?.config_elements.map((element) => (
-                <ConfigElementRenderer
-                  key={
-                    element.type === "setting"
-                      ? (element as ConfigSetting).id
-                      : element.text
-                  }
-                  element={element}
-                  config={config}
-                  onUpdate={(updatedConfig) => setConfig(updatedConfig)}
-                />
-              ))}{" "}
+              <div className="log max-h-48 overflow-auto" ref={logContainerRef}>
+                {" "}
+                {/* Add a container with a max height and overflow auto */}
+                {agentLog.map((text, index) => (
+                  <div key={index} className="m-1 border border-slate-700">
+                    {" "}
+                    {text}{" "}
+                  </div>
+                ))}
+              </div>
               <button
-                className="mt-4 rounded bg-blue-500 py-1 px-2 text-white"
+                className="mt-6 rounded bg-blue-500 py-1 px-2 text-white"
                 onClick={() =>
                   handleSaveConfiguration(currentConnector?.config_json || {})
                 }
