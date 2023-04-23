@@ -90,7 +90,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
             <strong>Market Strategies &amp; Practices</strong>
           </p>
           <p>
-            FutureBike's success in the market is primarily driven by its focus
+            FutureBike&apos;s success in the market is primarily driven by its focus
             on innovation, efficiency, and sustainability. The company is
             actively working to reduce its carbon footprint by sourcing
             eco-friendly materials and implementing green practices in their

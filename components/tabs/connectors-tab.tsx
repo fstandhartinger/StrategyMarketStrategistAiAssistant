@@ -23,7 +23,7 @@ import { BaseCallbackHandler } from "langchain/callbacks";
 import { AgentAction } from "langchain/dist/schema";
 
 const openAiKey = "sk-...";
-const serperApiKey = "434..";
+const serperApiKey = "434...";
 
 interface Action {
   tool: string;
