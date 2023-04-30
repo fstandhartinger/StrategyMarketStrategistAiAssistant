@@ -47,6 +47,7 @@ export interface Connector extends BaseConnector {
   config_elements: ConfigElement[];
   config_json: Record<string, any>;
   prompt_template: string | undefined;
+  maxAgentIterations: number;
 }
 
 // Hier können Sie die vollständigen Connector-Definitionen hinzufügen, einschließlich der neuen Felder

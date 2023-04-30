@@ -21,9 +21,12 @@ import { Serper } from "langchain/tools";
 import { initializeAgentExecutorWithOptions } from "langchain/agents";
 import { BaseCallbackHandler } from "langchain/callbacks";
 import { AgentAction } from "langchain/dist/schema";
+import { useStartupContext } from '../../contexts/StartupContext';
 
-const openAiKey = "sk-...";
-const serperApiKey = "434...";
+
+/* OF COURSE THIS HAS TO BE REMOVED FROM THE CODE, THE WHOLE COMMUNICATION WITH THIRD PARTY APIS LIKE OPENAI AND SERPER HAS TO BE MOVED TO PUBLIC/API TO HIDE TE KEYS FROM THE ENDUSER */
+const openAiKey = "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";
+const serperApiKey = "434c62507ed3c1460a4ef69c3b8381c004ee77ae";
 
 interface Action {
   tool: string;
@@ -41,314 +44,14 @@ interface Output {
   intermediateSteps: IntermediateStep[];
 }
 
-/* OF COURSE THESE WOULD BE LOADED FROM A DB, ALSO WE COULD ALLOW A DYNAMIC EDITOR TOTHE USER TO DEFINE ADDITIONAL AGENTS (CONNECTORS IN OUR LANGUAGE) */
-const connectors: Connector[] = [
-  {
-    type: "Market research",
-    description:
-      "Gathering and analyzing market data to support startup decision-making.",
-    name: "Market research",
-    in_use: false,
-    id: "TermId",
-    name_for_human: "Market research",
-    name_for_ai: "Market research",
-    description_for_human: "",
-    description_for_ai: "",
-    is_configurable: false,
-    config_elements: [],
-    config_json: {},
-    prompt_template: `You have the task to do market research for a startup.
-       Market research is gathering and analyzing market data, to support startup decision-making.
-       This is the startup description, which is all you need to know about the startup (you will need only this startup description, don't google more info about the startup):
-       -----------------
-       STARTUP_DESCRIPTION
-       -----------------
-      
-       Given this startup description and 
-       1. your general knowledge about the market this startup might operate in
-       2. the relevant information you find on google
-       your task is to answer:
-       - What are the most important market trends for this startup to consider?
-       - What is a compact summary of the market in which the startup operates?
-       - What are opportunities, risks, competitors, peculiarities of the market?
-       - Whar is your recommendation on how to proceed accordingly in order to run the company successfully.`,
-  },
-  {
-    type: "Opportunity Score",
-    description:
-      "A quantitative measure to prioritize potential solutions based on their impact, feasibility, and alignment with business goals.",
-    name: "Opportunity Score",
-    in_use: false,
-    id: "TermId",
-    name_for_human: "Opportunity Score",
-    name_for_ai: "Opportunity Score",
-    description_for_human: "",
-    description_for_ai: "",
-    is_configurable: false,
-    config_elements: [],
-    config_json: {},
-    prompt_template: "",
-  },
 
-  {
-    type: "Research Briefs",
-    description:
-      "Concise, structured documents outlining the objectives, methodology, and scope of a research project to ensure focused, efficient, and valuable research.",
-    name: "Research Briefs",
-    in_use: false,
-    id: "TermId",
-    name_for_human: "Research Briefs",
-    name_for_ai: "Research Briefs",
-    description_for_human: "",
-    description_for_ai: "",
-    is_configurable: false,
-    config_elements: [],
-    config_json: {},
-    prompt_template: "",
-  },
 
-  {
-    type: "Interview Scripts",
-    description:
-      "Guides for consistent, structured, and focused interviews that ensure reliable, accurate, and comparable data collection.",
-    name: "Interview Scripts",
-    in_use: false,
-    id: "TermId",
-    name_for_human: "Interview Scripts",
-    name_for_ai: "Interview Scripts",
-    description_for_human: "",
-    description_for_ai: "",
-    is_configurable: false,
-    config_elements: [],
-    config_json: {},
-    prompt_template: "",
-  },
-
-  {
-    type: "Customer Tribe Modeling",
-    description:
-      "Segmenting customers into distinct groups based on shared characteristics to better understand target audiences and tailor marketing, sales, and product development efforts.",
-    name: "Customer Tribe Modeling",
-    in_use: false,
-    id: "TermId",
-    name_for_human: "Customer Tribe Modeling",
-    name_for_ai: "Customer Tribe Modeling",
-    description_for_human: "",
-    description_for_ai: "",
-    is_configurable: false,
-    config_elements: [],
-    config_json: {},
-    prompt_template: "",
-  },
-
-  {
-    type: "Problem Framing",
-    description:
-      "Defining and structuring problems to facilitate effective problem-solving by clarifying goals, constraints, and desired outcomes.",
-    name: "Problem Framing",
-    in_use: false,
-    id: "TermId",
-    name_for_human: "Problem Framing",
-    name_for_ai: "Problem Framing",
-    description_for_human: "",
-    description_for_ai: "",
-    is_configurable: false,
-    config_elements: [],
-    config_json: {},
-    prompt_template: "",
-  },
-
-  {
-    type: "How Might We Statements",
-    description:
-      "Open-ended questions that encourage creative thinking and problem-solving by reframing problems as opportunities.",
-    name: "How Might We Statements",
-    in_use: false,
-    id: "TermId",
-    name_for_human: "How Might We Statements",
-    name_for_ai: "How Might We Statements",
-    description_for_human: "",
-    description_for_ai: "",
-    is_configurable: false,
-    config_elements: [],
-    config_json: {},
-    prompt_template: "",
-  },
-
-  {
-    type: "Brainstorming",
-    description:
-      "A creative technique that encourages free thinking and open discussion to generate a large number of ideas for further refinement and development.",
-    name: "Brainstorming",
-    in_use: false,
-    id: "TermId",
-    name_for_human: "Brainstorming",
-    name_for_ai: "Brainstorming",
-    description_for_human: "",
-    description_for_ai: "",
-    is_configurable: false,
-    config_elements: [],
-    config_json: {},
-    prompt_template: "",
-  },
-  {
-    type: "Longtail keywords",
-    description:
-      "Highly specific search phrases used to help startup target niche audiences and optimize SEO.",
-    name: "Longtail keywords",
-    in_use: false,
-    id: "TermId",
-    name_for_human: "Longtail keywords",
-    name_for_ai: "Longtail keywords",
-    description_for_human: "",
-    description_for_ai: "",
-    is_configurable: false,
-    config_elements: [],
-    config_json: {},
-    prompt_template: "",
-  },
-  {
-    type: "Market sizing",
-    description:
-      "Estimating the potential market for a startup's product or service.",
-    name: "Market sizing",
-    in_use: false,
-    id: "TermId",
-    name_for_human: "Market sizing",
-    name_for_ai: "Market sizing",
-    description_for_human: "",
-    description_for_ai: "",
-    is_configurable: false,
-    config_elements: [],
-    config_json: {},
-    prompt_template: "",
-  },
-  {
-    type: "Competitor research",
-    description:
-      "Analyzing the strengths and weaknesses of direct and indirect competitors.",
-    name: "Competitor research",
-    in_use: false,
-    id: "TermId",
-    name_for_human: "Competitor research",
-    name_for_ai: "Competitor research",
-    description_for_human: "",
-    description_for_ai: "",
-    is_configurable: false,
-    config_elements: [],
-    config_json: {},
-    prompt_template: "",
-  },
-  {
-    type: "Topic research",
-    description:
-      "Examining trending topics and themes across a startup's industry.",
-    name: "Topic research",
-    in_use: false,
-    id: "TermId",
-    name_for_human: "Topic research",
-    name_for_ai: "Topic research",
-    description_for_human: "",
-    description_for_ai: "",
-    is_configurable: false,
-    config_elements: [],
-    config_json: {},
-    prompt_template: "",
-  },
-  {
-    type: "Product research",
-    description:
-      "Assessing the viability and potential of a startup's product idea.",
-    name: "Product research",
-    in_use: false,
-    id: "TermId",
-    name_for_human: "Product research",
-    name_for_ai: "Product research",
-    description_for_human: "",
-    description_for_ai: "",
-    is_configurable: false,
-    config_elements: [],
-    config_json: {},
-    prompt_template: "",
-  },
-  {
-    type: "Influencer research",
-    description:
-      "Identifying influential individuals or brands within a target market to support outreach and marketing efforts.",
-    name: "Influencer research",
-    in_use: false,
-    id: "TermId",
-    name_for_human: "Influencer research",
-    name_for_ai: "Influencer research",
-    description_for_human: "",
-    description_for_ai: "",
-    is_configurable: false,
-    config_elements: [],
-    config_json: {},
-    prompt_template: "",
-  },
-  {
-    type: "Event research",
-    description:
-      "Exploring industry-specific events and conferences to learn from and connect with industry leaders.",
-    name: "Event research",
-    in_use: false,
-    id: "TermId",
-    name_for_human: "Event research",
-    name_for_ai: "Event research",
-    description_for_human: "",
-    description_for_ai: "",
-    is_configurable: false,
-    config_elements: [],
-    config_json: {},
-    prompt_template: "",
-  },
-  {
-    type: "Technology research",
-    description:
-      "Evaluating the effectiveness and potential of new and existing technology in the context of a startup's needs.",
-    name: "Technology research",
-    in_use: false,
-    id: "TermId",
-    name_for_human: "Technology research",
-    name_for_ai: "Technology research",
-    description_for_human: "",
-    description_for_ai: "",
-    is_configurable: false,
-    config_elements: [],
-    config_json: {},
-    prompt_template: "",
-  },
-];
-
-/* OF COURSE THIS WOULD BE LOADED FROM A DB, AFTER THE USER HAS SELECTED WHICH STARUP THEY AREA WORKING ON */
-const startupDescription = `FutureBike: Changing the Future of Transportation
-
-FutureBike is an innovative startup focused on transforming the way people commute in urban areas. Leveraging breakthrough technologies in AI and eco-friendly materials, FutureBike aims to provide clean, affordable, and efficient transportation solutions.
-
-The Problem
-
-Urban areas are faced with rising air pollution, traffic congestion, and inadequate public transportation systems. These issues pose significant environmental, health, and economic challenges to both individuals and society at large. FutureBike is committed to addressing these challenges and providing sustainable, affordable, and efficient solutions.
-
-The Solution
-
-FutureBike is building a range of electric bicycles and scooters that are designed to cater to different riding needs. Their bikes are powered by AI-driven motors and eco-friendly batteries, ensuring that riders can enjoy a clean ride without having to worry about carbon emissions.
-
-The bikes and scooters are stylish, lightweight, and have a long battery life, making them an ideal choice for commuting in urban areas. FutureBike is leveraging the latest advancements in AI technology to improve the safety and efficiency of their bikes further. Their advanced safety features such as automatic braking and collision avoidance software help riders stay safe while on the road.
-
-Market Strategies & Practices
-
-FutureBike's success in the market is primarily driven by its focus on innovation, efficiency, and sustainability. The company is actively working to reduce its carbon footprint by sourcing eco-friendly materials and implementing green practices in their manufacturing processes. Their bikes and scooters are priced competitively, making them a cost-effective alternative to traditional modes of transportation.
-
-The company has built robust partnerships with local governments, advocacy groups, and other stakeholders to promote sustainable transportation solutions. The company also offers bike-sharing services in urban areas, enabling more people to enjoy the clean and efficient ride that their bikes offer.
-
-Investment Opportunities
-
-FutureBike represents an exciting opportunity for investors interested in sustainable transportation solutions. With the rise of environmental concerns and increasing demand for eco-friendly mobility options, FutureBike is well-positioned to become a leading player in the market.
-
-The company has a clear growth strategy, built around expanding its product line and building strategic partnerships. With their focus on innovation and sustainability, FutureBike has the potential to capture a significant market share and generate substantial returns for investors.`;
 
 const ConnectorsTab: React.FC = () => {
+  const [connectors, setConnectors] = useState<Connector[]>([]); // State variable to store the fetched connectors
+
+  const { selectedStartup } = useStartupContext();
+
   const [selectedConnectors, setSelectedConnectors] = useState<Connector[]>([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [currentConnector, setCurrentConnector] = useState<Connector | null>(
@@ -397,6 +100,13 @@ const ConnectorsTab: React.FC = () => {
   }
 
   useEffect(() => {
+    // Fetch the list of connectors from the JSON file in the public folder
+    fetch('/connectors.json')
+      .then((response) => response.json())
+      .then((data) => setConnectors(data));
+  }, []);
+
+  useEffect(() => {
     if (logContainerRef.current) {
       logContainerRef.current.scrollTo({
         top: logContainerRef.current.scrollHeight,
@@ -429,6 +139,12 @@ const ConnectorsTab: React.FC = () => {
   };
 
   const handleRunAgents = (connector: Connector) => {
+
+    if (!selectedStartup) {
+      alert("Please select a startup first");
+      return;
+    }
+
     setAgentLog(["Starting Agent Team..."]); // Reset the log when starting a new run
 
     setCurrentConnector(connector);
@@ -440,11 +156,7 @@ const ConnectorsTab: React.FC = () => {
       template: "{query}",
       inputVariables: ["query"],
     });
-    /*
-    const prompt = new PromptTemplate({
-      template: connector.prompt_template ?? "",
-      inputVariables: ["STARTUP_DESCRIPTION"],
-    });*/
+   
     const llmChain = new LLMChain({ llm: llm, prompt: prompt, verbose: true });
 
     const llmTool = new DynamicTool({
@@ -458,19 +170,15 @@ const ConnectorsTab: React.FC = () => {
     const tools = [llmTool, search];
 
     const run = async () => {
+
       const executor = await initializeAgentExecutorWithOptions(tools, llm, {
         agentType: "zero-shot-react-description",
         returnIntermediateSteps: true,
+        maxIterations: connector.maxAgentIterations,
       });
       console.log("Loaded agent.");
 
-
-      const agentPrompt = new PromptTemplate({
-        template: connector.prompt_template ?? "",
-        inputVariables: ["STARTUP_DESCRIPTION"],
-      });
-
-      const input = (connector.prompt_template??"").replaceAll("STARTUP_DESCRIPTION", startupDescription)
+      const input = (connector.prompt_template??"").replaceAll("STARTUP_DESCRIPTION", selectedStartup.description)
 
       console.log(input)
 

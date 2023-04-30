@@ -10,6 +10,7 @@ import { useSignInModal } from "./sign-in-modal";
 import UserDropdown from "./user-dropdown";
 import React from "react";
 import CookieBanner from "./cookie-banner";
+import StartupSelector from "../shared/StartupSelector";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -93,7 +94,8 @@ export default function Layout({
             <div>
               <p className="text-gray-900">Selected Startup</p>
               <h1 className="bg-gradient-to-br from-black to-stone-500 bg-clip-text font-display text-l font-bold tracking-[-0.02em] text-transparent drop-shadow-sm md:text-2xl ">
-                Futurebike ▾
+                {/* Futurebike ▾ */}
+                <StartupSelector/>
               </h1>
             </div>
           </div>

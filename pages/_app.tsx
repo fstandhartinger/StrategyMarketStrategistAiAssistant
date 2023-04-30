@@ -7,6 +7,7 @@ import { Provider as RWBProvider } from "react-wrap-balancer";
 import cx from "classnames";
 import localFont from "@next/font/local";
 import { Inter } from "@next/font/google";
+import { StartupProvider } from "../contexts/StartupContext";
 
 const sfPro = localFont({
   src: "../styles/SF-Pro-Display-Medium.otf",
@@ -25,9 +26,11 @@ export default function MyApp({
   return (
     <SessionProvider session={session}>
       <RWBProvider>
-        <div className={cx(sfPro.variable, inter.variable)}>
-          <Component {...pageProps} />
-        </div>
+        <StartupProvider>
+          <div className={cx(sfPro.variable, inter.variable)}>
+            <Component {...pageProps} />
+          </div>
+        </StartupProvider>
       </RWBProvider>
       <Analytics />
     </SessionProvider>
