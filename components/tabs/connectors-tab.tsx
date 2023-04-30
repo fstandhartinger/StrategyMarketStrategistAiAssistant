@@ -25,8 +25,8 @@ import { useStartupContext } from '../../contexts/StartupContext';
 
 
 /* OF COURSE THIS HAS TO BE REMOVED FROM THE CODE, THE WHOLE COMMUNICATION WITH THIRD PARTY APIS LIKE OPENAI AND SERPER HAS TO BE MOVED TO PUBLIC/API TO HIDE TE KEYS FROM THE ENDUSER */
-const openAiKey = "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";
-const serperApiKey = "434c62507ed3c1460a4ef69c3b8381c004ee77ae";
+const openAiKey = "sk-...";
+const serperApiKey = "43...";
 
 interface Action {
   tool: string;
